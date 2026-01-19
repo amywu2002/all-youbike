@@ -18,7 +18,7 @@ body {
   width: 100%;
 }
 
-/* ===== 左上站點數 ===== */
+/* 左上 */
 #count {
   position: absolute;
   top: 12px;
@@ -27,11 +27,11 @@ body {
   background: #fff;
   padding: 6px 10px;
   border-radius: 8px;
-  font-size: 14px;
   box-shadow: 0 2px 6px rgba(0,0,0,.15);
+  font-size: 14px;
 }
 
-/* ===== 上方控制列 ===== */
+/* 上方控制 */
 #controls {
   position: absolute;
   top: 12px;
@@ -51,34 +51,32 @@ body {
   border: 1px solid #ccc;
   background: #fff;
   box-shadow: 0 2px 6px rgba(0,0,0,.15);
-  max-width: 100%;
 }
 
-/* ===== 官方色 ===== */
-.marker.green  { --c: #7AC943; }
-.marker.yellow { --c: #F5A623; }
-.marker.red    { --c: #A80000; }
+/* Marker 顏色 */
+.marker.green  { --c:#7AC943; }
+.marker.yellow { --c:#F5A623; }
+.marker.red    { --c:#A80000; }
 
-/* 移除 Leaflet 預設白底 */
 .leaflet-div-icon {
   background: transparent !important;
   border: none !important;
 }
 
-/* Marker 尺寸（手機放大） */
 .marker svg {
   width: 60px;
   height: 68px;
 }
 
-/* +- 移到右上 */
+/* +- 右上 */
 .leaflet-top.leaflet-left {
   right: 12px;
   left: auto;
 }
 
-/* 使用者定位圖層不擋操作 */
+/* 使用者定位最上層 */
 .leaflet-pane.userLocation {
+  z-index: 999 !important;
   pointer-events: none;
 }
 </style>
@@ -110,13 +108,12 @@ body {
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
-/* ===== API ===== */
+/* API */
 const TAIPEI_API =
   "https://tcgbusfs.blob.core.windows.net/dotapp/youbike/v2/youbike_immediate.json";
-
 const TAOYUAN_API = "stations.json";
 
-/* ===== 地圖 ===== */
+/* Map */
 const map = L.map("map").setView([25.03, 121.55], 11);
 map.zoomControl.setPosition("topright");
 
@@ -124,16 +121,13 @@ L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
   attribution: "© OpenStreetMap"
 }).addTo(map);
 
-/* ===== 使用者定位專用 Pane（最上層）===== */
 map.createPane("userLocation");
-map.getPane("userLocation").style.zIndex = 1000;
 
 let markers = [];
 let dataTP = [];
 let dataTY = [];
 let userMarker = null;
 
-/* ===== 工具 ===== */
 function clearMarkers() {
   markers.forEach(m => map.removeLayer(m));
   markers = [];
@@ -145,8 +139,8 @@ function getStatus(b, r) {
   return "green";
 }
 
-/* ===== 官方水滴 Marker ===== */
-function makeMarkerHTML(borrow, ret, status) {
+/* Marker SVG */
+function makeMarkerHTML(b, r, status) {
   return `
   <div class="marker ${status}">
     <svg viewBox="0 0 64 72">
@@ -156,66 +150,29 @@ function makeMarkerHTML(borrow, ret, status) {
                C54 12 44 2 32 2Z"
         fill="var(--c)" stroke="#fff" stroke-width="3"/>
       <line x1="20" y1="34" x2="44" y2="34"
-        stroke="#fff" stroke-width="2" opacity="0.85"/>
+        stroke="#fff" stroke-width="2"/>
       <text x="32" y="26" text-anchor="middle"
-        font-size="16" font-weight="700" fill="#fff">${borrow}</text>
+        font-size="16" font-weight="700" fill="#fff">${b}</text>
       <text x="32" y="50" text-anchor="middle"
-        font-size="14" font-weight="600" fill="#fff">${ret}</text>
+        font-size="14" font-weight="600" fill="#fff">${r}</text>
     </svg>
   </div>`;
 }
 
-/* ===== 顯示使用者定位（自動）===== */
-function showUserLocation(lat, lng) {
-  if (userMarker) {
-    map.removeLayer(userMarker.shadow);
-    map.removeLayer(userMarker.dot);
-  }
-
-  const shadow = L.circleMarker([lat, lng], {
-    pane: "userLocation",
-    radius: 14,
-    fillColor: "rgba(0,0,0,0.35)",
-    fillOpacity: 0.4,
-    stroke: false
-  }).addTo(map);
-
-  const dot = L.circleMarker([lat, lng], {
-    pane: "userLocation",
-    radius: 9,
-    color: "#007AFF",
-    fillColor: "#007AFF",
-    fillOpacity: 1,
-    weight: 3
-  }).addTo(map);
-
-  userMarker = { shadow, dot };
-}
-
-/* ===== 自動定位 ===== */
-map.locate({ setView: false, watch: true });
-map.on("locationfound", e => {
-  showUserLocation(e.latlng.lat, e.latlng.lng);
-});
-
-/* ===== 渲染 ===== */
+/* Render */
 function render() {
   clearMarkers();
 
   const kw = search.value.trim();
-  const statusF = statusFilter.value;
   const cityF = city.value;
+  const statusF = statusFilter.value;
 
   let list = [];
-
   if (cityF === "all" || cityF === "ty") list = list.concat(dataTY);
   if (cityF === "all" || cityF === "tp") list = list.concat(dataTP);
 
   list = list.filter(s => {
-    const b = Number(s.borrow);
-    const r = Number(s.ret);
-    const st = getStatus(b, r);
-
+    const st = getStatus(s.borrow, s.ret);
     if (statusF !== "all" && st !== statusF) return false;
     if (kw && !s.name.includes(kw) && !s.addr.includes(kw)) return false;
     return true;
@@ -243,8 +200,8 @@ function render() {
   count.textContent = `站點：${markers.length} 筆`;
 }
 
-/* ===== 載入資料 ===== */
-fetch(TAոյUAN_API)
+/* Load 桃園 */
+fetch(TAOYUAN_API)
   .then(r => r.json())
   .then(j => {
     dataTY = Object.values(j.retVal).map(s => ({
@@ -258,6 +215,7 @@ fetch(TAոյUAN_API)
     render();
   });
 
+/* Load 台北 */
 fetch(TAIPEI_API)
   .then(r => r.json())
   .then(j => {
