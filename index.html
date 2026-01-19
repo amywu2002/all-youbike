@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8" />
+<title>YouBike 即時站點地圖</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+
+<style>
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+#map {
+  height: 100vh;
+  width: 100%;
+}
+
+/* 左上站點數 */
+#count {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 1000;
+  background: #fff;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 14px;
+  box-shadow: 0 2px 6px rgba(0,0,0,.15);
+}
+
+/* 控制列 */
+#controls {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  max-width: calc(100vw - 24px);
+}
+
+#search, #statusFilter, #cityFilter {
+  padding: 8px 12px;
+  font-size: 15px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  background: #fff;
+  box-shadow: 0 2px 6px rgba(0,0,0,.15);
+}
+
+/* 官方色 */
+.marker.green  { --c:#7AC943; }
+.marker.yellow { --c:#F5A623; }
+.marker.red    { --c:#A80000; }
+
+.leaflet-div-icon {
+  background: transparent !important;
+  border: none !important;
+}
+
+/* +- 右上 */
+.leaflet-top.leaflet-left {
+  right: 12px;
+  left: auto;
+}
+
+/* 使用者定位最上層 */
+.leaflet-pane.userLocation {
+  z-index: 650;
+}
+</style>
+</head>
+
+<body>
+
+<div id="count">站點：--</div>
+
+<div id="controls">
+  <input id="search" placeholder="搜尋站點名稱或地址…" />
+  <select id="statusFilter">
+    <option value="all">全部狀態</option>
+    <option value="green">正常</option>
+    <option value="yellow">無車</option>
+    <option value="red">無位</option>
+  </select>
+  <select id="cityFilter">
+    <option value="all">全部城市</option>
+    <option value="taoyuan">桃園</option>
+    <option value="taipei">台北</option>
+  </select>
+</div>
+
+<div id="map"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+/* ===== API ===== */
+const TAOYUAN_URL = "stations.json";
+const TAIPEI_URL =
+  "https://tcgbusfs.blob.core.windows.net/dotapp/youbike/v2/youbike_immediate.json";
+
+/* ===== 地圖 ===== */
+const map = L.map("map").setView([25.04, 121.53], 11);
+map.zoomControl.setPosition("topright");
+map.createPane("userLocation");
+
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  attribution: "© OpenStreetMap"
+}).addTo(map);
+
+/* ===== 資料 ===== */
+let dataAll = [];
+let markers = [];
+let userMarker = null;
+
+/* ===== 工具 ===== */
+function clearMarkers() {
+  markers.forEach(m => map.removeLayer(m));
+  markers = [];
+}
+
+function getStatus(b, r) {
+  if (r === 0) return "red";
+  if (b === 0) return "yellow";
+  return "green";
+}
+
+/* 官方水滴 */
+function makeMarkerHTML(b, r, status) {
+  const isMobile = window.innerWidth < 640;
+  const w = isMobile ? 60 : 52;
+  const h = isMobile ? 72 : 60;
+
+  return `
+  <div class="marker ${status}">
+    <svg viewBox="0 0 64 72" width="${w}" height="${h}">
+      <path d="M32 2 C20 2 10 12 10 26
+               C10 44 32 68 32 68
+               C32 68 54 44 54 26
+               C54 12 44 2 32 2Z"
+        fill="var(--c)" stroke="#fff" stroke-width="3"/>
+      <line x1="20" y1="34" x2="44" y2="34"
+        stroke="#fff" stroke-width="2" opacity="0.85"/>
+      <text x="32" y="26" text-anchor="middle"
+        font-size="16" font-weight="700" fill="#fff">${b}</text>
+      <text x="32" y="48" text-anchor="middle"
+        font-size="14" font-weight="600" fill="#fff">${r}</text>
+    </svg>
+  </div>`;
+}
+
+/* ===== Render ===== */
+function render() {
+  clearMarkers();
+
+  const kw = search.value.trim();
+  const statusF = statusFilter.value;
+  const cityF = cityFilter.value;
+
+  const list = dataAll.filter(s => {
+    if (cityF !== "all" && s.city !== cityF) return false;
+
+    const st = getStatus(s.borrow, s.ret);
+    if (statusF !== "all" && st !== statusF) return false;
+
+    if (kw) {
+      if (!s.name.includes(kw) && !s.addr.includes(kw)) return false;
+    }
+    return true;
+  });
+
+  list.forEach(s => {
+    const icon = L.divIcon({
+      iconSize: window.innerWidth < 640 ? [60,72] : [52,60],
+      iconAnchor: window.innerWidth < 640 ? [30,70] : [26,58],
+      html: makeMarkerHTML(s.borrow, s.ret, getStatus(s.borrow, s.ret))
+    });
+
+    const m = L.marker([s.lat, s.lng], { icon }).addTo(map);
+    m.bindPopup(`
+      <b>${s.name}</b><br>
+      地址：${s.addr}<br>
+      可借：${s.borrow}<br>
+      可還：${s.ret}
+    `);
+    markers.push(m);
+  });
+
+  count.textContent = `站點：${markers.length} 筆`;
+}
+
+/* ===== 使用者定位 ===== */
+function showUserLocation(lat, lng) {
+  if (userMarker) {
+    map.removeLayer(userMarker.shadow);
+    map.removeLayer(userMarker.dot);
+  }
+
+  const shadow = L.circleMarker([lat, lng], {
+    pane: "userLocation",
+    radius: 12,
+    fillColor: "rgba(0,0,0,.35)",
+    fillOpacity: .4,
+    stroke: false
+  }).addTo(map);
+
+  const dot = L.circleMarker([lat, lng], {
+    pane: "userLocation",
+    radius: 9,
+    color: "#007AFF",
+    fillColor: "#007AFF",
+    fillOpacity: 1,
+    weight: 3
+  }).addTo(map);
+
+  userMarker = { shadow, dot };
+}
+
+/* ===== 載入資料 ===== */
+Promise.all([
+  fetch(TAOYUAN_URL).then(r => r.json()),
+  fetch(TAIPEI_URL).then(r => r.json())
+]).then(([ty, tp]) => {
+  dataAll = [
+    ...Object.values(ty.retVal).map(s => ({
+      city: "taoyuan",
+      lat: +s.lat,
+      lng: +s.lng,
+      name: s.sna,
+      addr: s.ar || "",
+      borrow: +s.sbi,
+      ret: +s.bemp
+    })),
+    ...tp.map(s => ({
+      city: "taipei",
+      lat: +s.latitude,
+      lng: +s.longitude,
+      name: s.sna,
+      addr: s.ar || "",
+      borrow: +s.available_rent_bikes,
+      ret: +s.available_return_bikes
+    }))
+  ];
+  render();
+});
+
+/* 自動定位 */
+if ("geolocation" in navigator) {
+  navigator.geolocation.getCurrentPosition(p => {
+    showUserLocation(p.coords.latitude, p.coords.longitude);
+    map.setView([p.coords.latitude, p.coords.longitude], 14);
+  });
+}
+
+/* 事件 */
+search.oninput = render;
+statusFilter.onchange = render;
+cityFilter.onchange = render;
+</script>
+
+</body>
+</html>
