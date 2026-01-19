@@ -122,7 +122,7 @@ map.zoomControl.setPosition("topright");
 
 /* ✅ 關鍵：建立「最高層」pane */
 map.createPane("userLocation");
-map.getPane("userLocation").style.zIndex = 10000;
+map.getPane("userLocation").style.zIndex = 650;
 
 L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
   attribution: "© OpenStreetMap"
@@ -144,7 +144,7 @@ function locateUser() {
     if (!userMarker) {
       userMarker = L.marker([lat, lng], {
         pane: "userLocation",
-        zIndexOffset: 10000,
+        zIndexOffset: 0,
         icon: L.divIcon({
           className: "",
           iconSize: [24, 24],
@@ -263,3 +263,4 @@ city.addEventListener("change", render);
 
 </body>
 </html>
+
