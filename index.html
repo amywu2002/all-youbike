@@ -234,44 +234,49 @@ function render() {
   count.textContent = `站點：${markers.length}站`;
 }
 
-/* ===== 資料 ===== */
-fetch(TAOYUAN_API).then(r => r.json()).then(j => {
-  dataTY = Object.values(j.retVal).map(s => ({
-    name: s.sna,
-    addr: s.ar || "",
-    lat: Number(s.lat),
-    lng: Number(s.lng),
-    borrow: Number(s.sbi),
-    ret: Number(s.bemp)
-  }));
-  render();
-});
-  
-fetch(NEWTAI_API)
-  .then(r => r.json())
-  .then(j => {
-    dataNT = j.map(s => ({
+
+// === 每 30 秒自動更新資料 ===
+setInterval(() => {
+  // 三個 fetch（桃園 / 新北 / 台北）
+  fetch(TAOYUAN_API).then(r => r.json()).then(j => {
+    dataTY = Object.values(j.retVal).map(s => ({
       name: s.sna,
       addr: s.ar || "",
       lat: Number(s.lat),
       lng: Number(s.lng),
-      borrow: Number(s.sbi_quantity),
+      borrow: Number(s.sbi),
       ret: Number(s.bemp)
     }));
     render();
   });
-  
-fetch(TAIPEI_API).then(r => r.json()).then(j => {
-  dataTP = j.map(s => ({
-    name: s.sna,
-    addr: s.ar || "",
-    lat: Number(s.latitude),
-    lng: Number(s.longitude),
-    borrow: Number(s.available_rent_bikes),
-    ret: Number(s.available_return_bikes)
-  }));
-  render();
-});
+
+  fetch(NEWTAI_API)
+    .then(r => r.json())
+    .then(j => {
+      dataNT = j.map(s => ({
+        name: s.sna,
+        addr: s.ar || "",
+        lat: Number(s.lat),
+        lng: Number(s.lng),
+        borrow: Number(s.sbi_quantity),
+        ret: Number(s.bemp)
+      }));
+      render();
+    });
+
+  fetch(TAIPEI_API).then(r => r.json()).then(j => {
+    dataTP = j.map(s => ({
+      name: s.sna,
+      addr: s.ar || "",
+      lat: Number(s.latitude),
+      lng: Number(s.longitude),
+      borrow: Number(s.available_rent_bikes),
+      ret: Number(s.available_return_bikes)
+    }));
+    render();
+  });
+}, 30000);
+;
 
 search.addEventListener("input", render);
 statusFilter.addEventListener("change", render);
@@ -280,3 +285,4 @@ city.addEventListener("change", render);
 
 </body>
 </html>
+
