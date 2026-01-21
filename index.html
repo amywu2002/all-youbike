@@ -6,7 +6,7 @@
 <title>YouBike站點地圖</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-<link://unpkg.com/leaflet@1.9.4/dist/leaflet.css
+https://unpkg.com/leaflet@1.9.4/dist/leaflet.css
 
 <style>
 body {
@@ -14,10 +14,7 @@ body {
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
-#map {
-  height: 100vh;
-  width: 100%;
-}
+#map { height: 100vh; width: 100%; }
 
 /* 左上 */
 #count {
@@ -111,25 +108,26 @@ body {
 
 <div id="map"></div>
 
-<script/unpkg.com/leaflet@1.9.4/dist/leaflet.js</script>
+https://unpkg.com/leaflet@1.9.4/dist/leaflet.js
 
 <script>
-/* ==== 明確綁定 UI 元素（避免某些環境沒有 window 全域） ==== */
-const city = document.getElementById('city');
-const search = document.getElementById('search');
-const statusFilter = document.getElementById('statusFilter');
-const count = document.getElementById('count');
+/* === 綁定 DOM === */
+const city = document.getElementById("city");
+const search = document.getElementById("search");
+const statusFilter = document.getElementById("statusFilter");
+const count = document.getElementById("count");
 
+/* === API === */
 const TAIPEI_API =
   "https://tcgbusfs.blob.core.windows.net/dotapp/youbike/v2/youbike_immediate.json";
 const TAOYUAN_API = "stations.json";
 const NEWTAI_API = "https://cool-block-affbntpc-youbike-proxy.amywu2.workers.dev/ntpc";
 
-/* 地圖 */
+/* === 地圖初始化 === */
 const map = L.map("map").setView([25.03, 121.55], 11);
 map.zoomControl.setPosition("topright");
 
-/* 使用者定位在最高層 pane */
+/* 最高層 pane 放藍點 */
 map.createPane("userLocation");
 map.getPane("userLocation").style.zIndex = 650;
 
@@ -137,20 +135,19 @@ L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
   attribution: "© OpenStreetMap"
 }).addTo(map);
 
-/* 資料與 marker 狀態 */
-let markers = [];
+/* === 全域資料 === */
 let dataTP = [];
 let dataTY = [];
-let dataNT = []; // ✅ 明確宣告
+let dataNT = []; // ⚠️ 必須有（你的版本確實缺這行，所以會全部不顯示）
+let markers = []; 
 let userMarker = null;
 
-/* 高效能：用 Map 快取 marker（key = 站名） */
-const markerMap = new Map();
+/* === marker 快取 map === */
+const markerCache = new Map();
 
-/* ===== 使用者定位（自動） ===== */
+/* === 使用者定位 === */
 function locateUser() {
   if (!navigator.geolocation) return;
-
   navigator.geolocation.getCurrentPosition(pos => {
     const lat = pos.coords.latitude;
     const lng = pos.coords.longitude;
@@ -159,12 +156,10 @@ function locateUser() {
       userMarker = L.marker([lat, lng], {
         pane: "userLocation",
         icon: L.divIcon({
-          className: "",
-          iconSize: [24, 24],
-          html: `<div class="user-dot"></div>`
+          html: `<div class="user-dot"></div>`,
+          iconSize: [24, 24]
         })
       }).addTo(map);
-
       map.setView([lat, lng], 14);
     } else {
       userMarker.setLatLng([lat, lng]);
@@ -173,7 +168,7 @@ function locateUser() {
 }
 locateUser();
 
-/* ===== 工具 ===== */
+/* === 工具 === */
 function getStatus(b, r) {
   if (r === 0) return "red";
   if (b === 0) return "yellow";
@@ -199,62 +194,48 @@ function makeMarkerHTML(b, r, status) {
   </div>`;
 }
 
-/* 🚀 增量更新（不重建 marker） */
-function updateOrCreateMarker(s) {
+/* === 增量更新：不重建 marker === */
+function updateMarker(s) {
   const key = s.name;
   const status = getStatus(s.borrow, s.ret);
 
-  if (markerMap.has(key)) {
-    const m = markerMap.get(key);
+  if (markerCache.has(key)) {
+    const m = markerCache.get(key);
 
-    // 位置可能有微調
     m.setLatLng([s.lat, s.lng]);
-
-    // 更新圖標（數字與顏色）
-    m.setIcon(
-      L.divIcon({
-        iconSize: [60, 68],
-        iconAnchor: [30, 68],
-        html: makeMarkerHTML(s.borrow, s.ret, status)
-      })
-    );
-
-    // 更新 popup 內容
+    m.setIcon(L.divIcon({
+      iconSize: [60, 68],
+      iconAnchor: [30, 68],
+      html: makeMarkerHTML(s.borrow, s.ret, status)
+    }));
     m.setPopupContent(`
       <b>${s.name}</b><br>
       地址：${s.addr}<br>
       可借：${s.borrow}<br>
       可還：${s.ret}
     `);
-
-    // 若上一次被篩選隱藏，這次符合就重新加入地圖
-    if (!map.hasLayer(m)) m.addTo(map);
-
     return m;
   }
 
-  // 不存在就建立一次
   const marker = L.marker([s.lat, s.lng], {
     icon: L.divIcon({
       iconSize: [60, 68],
       iconAnchor: [30, 68],
       html: makeMarkerHTML(s.borrow, s.ret, status)
     })
-  }).addTo(map)
-    .bindPopup(`
-      <b>${s.name}</b><br>
-      地址：${s.addr}<br>
-      可借：${s.borrow}<br>
-      可還：${s.ret}
-    `);
+  }).addTo(map).bindPopup(`
+    <b>${s.name}</b><br>
+    地址：${s.addr}<br>
+    可借：${s.borrow}<br>
+    可還：${s.ret}
+  `);
 
-  markerMap.set(key, marker);
+  markerCache.set(key, marker);
   return marker;
 }
 
-/* ===== Render ===== */
+/* === Render === */
 function render() {
-  // 以目前篩選條件決定要顯示的清單
   const kw = search.value.trim();
   const cityF = city.value;
   const statusF = statusFilter.value;
@@ -271,79 +252,57 @@ function render() {
     return true;
   });
 
-  // 本次應該顯示的 key 集合
-  const activeKeys = new Set(list.map(s => s.name));
-
-  // 增量更新/建立應顯示的 marker
+  markers.forEach(m => map.removeLayer(m));
   markers = [];
-  list.forEach(s => {
-    const marker = updateOrCreateMarker(s);
-    markers.push(marker);
-  });
 
-  // 隱藏本次不需要顯示的 marker（保留快取，不刪除實體）
-  markerMap.forEach((m, key) => {
-    if (!activeKeys.has(key) && map.hasLayer(m)) {
-      map.removeLayer(m);
-    }
+  list.forEach(s => {
+    const m = updateMarker(s);
+    markers.push(m);
   });
 
   count.textContent = `站點：${markers.length}站`;
 }
 
-/* ===== 載入資料 ===== */
+/* === 抓資料 === */
 function loadAll() {
-  // 桃園
   fetch(TAOYUAN_API).then(r => r.json()).then(j => {
     dataTY = Object.values(j.retVal).map(s => ({
-      name: s.sna,
-      addr: s.ar || "",
-      lat: Number(s.lat),
-      lng: Number(s.lng),
-      borrow: Number(s.sbi),
-      ret: Number(s.bemp)
+      name: s.sna, addr: s.ar || "",
+      lat: Number(s.lat), lng: Number(s.lng),
+      borrow: Number(s.sbi), ret: Number(s.bemp)
     }));
     render();
-  }).catch(console.error);
+  });
 
-  // 新北
-  fetch(NEWTAI_API)
-    .then(r => r.json())
-    .then(j => {
-      dataNT = j.map(s => ({
-        name: s.sna,
-        addr: s.ar || "",
-        lat: Number(s.lat),
-        lng: Number(s.lng),
-        borrow: Number(s.sbi_quantity),
-        ret: Number(s.bemp)
-      }));
-      render();
-    }).catch(console.error);
+  fetch(NEWTAI_API).then(r => r.json()).then(j => {
+    dataNT = j.map(s => ({
+      name: s.sna, addr: s.ar || "",
+      lat: Number(s.lat), lng: Number(s.lng),
+      borrow: Number(s.sbi_quantity), ret: Number(s.bemp)
+    }));
+    render();
+  });
 
-  // 台北
   fetch(TAIPEI_API).then(r => r.json()).then(j => {
     dataTP = j.map(s => ({
-      name: s.sna,
-      addr: s.ar || "",
-      lat: Number(s.latitude),
-      lng: Number(s.longitude),
+      name: s.sna, addr: s.ar || "",
+      lat: Number(s.latitude), lng: Number(s.longitude),
       borrow: Number(s.available_rent_bikes),
       ret: Number(s.available_return_bikes)
     }));
     render();
-  }).catch(console.error);
+  });
 }
 
 loadAll();
 
-/* 🔄 每 30 秒自動更新（不重建 marker） */
+/* === 每 30 秒自動更新 === */
 setInterval(() => {
   loadAll();
-  locateUser(); // 更新藍點位置（不會強制置中）
+  locateUser();
 }, 30000);
 
-/* 互動事件 */
+/* === 搜尋/篩選事件 === */
 search.addEventListener("input", render);
 statusFilter.addEventListener("change", render);
 city.addEventListener("change", render);
