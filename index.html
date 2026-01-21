@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
@@ -5,7 +6,7 @@
 <title>YouBike站點地圖</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link://unpkg.com/leaflet@1.9.4/dist/leaflet.css
 
 <style>
 body {
@@ -110,7 +111,7 @@ body {
 
 <div id="map"></div>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+https://unpkg.com/leaflet@1.9.4/dist/leaflet.js</script>
 
 <script>
 const TAIPEI_API =
@@ -133,6 +134,7 @@ L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
 let markers = [];
 let dataTP = [];
 let dataTY = [];
+let dataNT = []; // ✅ 補上宣告
 let userMarker = null;
 
 /* ===== 使用者定位（自動） ===== */
@@ -234,23 +236,33 @@ function render() {
   count.textContent = `站點：${markers.length}站`;
 }
 
-/* ===== 資料 ===== */
-fetch(TAOYUAN_API).then(r => r.json()).then(j => {
-  dataTY = Object.values(j.retVal).map(s => ({
-    name: s.sna,
-    addr: s.ar || "",
-    lat: Number(s.lat),
-    lng: Number(s.lng),
-    borrow: Number(s.sbi),
-    ret: Number(s.bemp)
-  }));
-  render();
-});
-  
-fetch(NEWTAI_API)
-  .then(r => r.json())
-  .then(j => {
-    dataNT = j.map(s => ({
+/* ===== 資料集中載入，並定期更新 ===== */
+async function loadData() {
+  try {
+    const [tyRes, ntRes, tpRes] = await Promise.all([
+      fetch(TAOYUAN_API),
+      fetch(NEWTAI_API),
+      fetch(TAIPEI_API),
+    ]);
+
+    const [tyJson, ntJson, tpJson] = await Promise.all([
+      tyRes.json(),
+      ntRes.json(),
+      tpRes.json(),
+    ]);
+
+    // 桃園
+    dataTY = Object.values(tyJson.retVal).map(s => ({
+      name: s.sna,
+      addr: s.ar || "",
+      lat: Number(s.lat),
+      lng: Number(s.lng),
+      borrow: Number(s.sbi),
+      ret: Number(s.bemp)
+    }));
+
+    // 新北
+    dataNT = ntJson.map(s => ({
       name: s.sna,
       addr: s.ar || "",
       lat: Number(s.lat),
@@ -258,20 +270,31 @@ fetch(NEWTAI_API)
       borrow: Number(s.sbi_quantity),
       ret: Number(s.bemp)
     }));
+
+    // 臺北
+    dataTP = tpJson.map(s => ({
+      name: s.sna,
+      addr: s.ar || "",
+      lat: Number(s.latitude),
+      lng: Number(s.longitude),
+      borrow: Number(s.available_rent_bikes),
+      ret: Number(s.available_return_bikes)
+    }));
+
     render();
-  });
-  
-fetch(TAIPEI_API).then(r => r.json()).then(j => {
-  dataTP = j.map(s => ({
-    name: s.sna,
-    addr: s.ar || "",
-    lat: Number(s.latitude),
-    lng: Number(s.longitude),
-    borrow: Number(s.available_rent_bikes),
-    ret: Number(s.available_return_bikes)
-  }));
-  render();
-});
+  } catch (err) {
+    console.error("載入站點資料失敗：", err);
+  }
+}
+
+// 初始載入
+loadData();
+
+// ⏱️ 每 30 秒自動更新資料與使用者位置
+setInterval(() => {
+  loadData();
+  locateUser(); // 可保留：更新藍點位置，不會強制置中
+}, 30 * 1000);
 
 search.addEventListener("input", render);
 statusFilter.addEventListener("change", render);
@@ -280,4 +303,3 @@ city.addEventListener("change", render);
 
 </body>
 </html>
-
