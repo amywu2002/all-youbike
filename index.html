@@ -6,7 +6,8 @@
 <title>YouBike站點地圖</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-<link://unpkg.com/leaflet@1.9.4/dist/leaflet.css
+<!-- ✅ 正確載入 Leaflet CSS -->
+https://unpkg.com/leaflet@1.9.4/dist/leaflet.css
 
 <style>
 body {
@@ -111,19 +112,20 @@ body {
 
 <div id="map"></div>
 
+<!-- ✅ 正確載入 Leaflet JS -->
 https://unpkg.com/leaflet@1.9.4/dist/leaflet.js</script>
 
 <script>
 const TAIPEI_API =
   "https://tcgbusfs.blob.core.windows.net/dotapp/youbike/v2/youbike_immediate.json";
-const TAOYUAN_API = "stations.json";
+const TAOYUAN_API = "stations.json"; // 確保此檔案存在同目錄
 const NEWTAI_API = "https://cool-block-affbntpc-youbike-proxy.amywu2.workers.dev/ntpc";
 
 /* 地圖 */
 const map = L.map("map").setView([25.03, 121.55], 11);
 map.zoomControl.setPosition("topright");
 
-/* ✅ 關鍵：建立「最高層」pane */
+/* ✅ 建立高層 pane 放使用者定位藍點 */
 map.createPane("userLocation");
 map.getPane("userLocation").style.zIndex = 650;
 
@@ -134,7 +136,7 @@ L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
 let markers = [];
 let dataTP = [];
 let dataTY = [];
-let dataNT = []; // ✅ 補上宣告
+let dataNT = []; // ✅ 宣告 dataNT
 let userMarker = null;
 
 /* ===== 使用者定位（自動） ===== */
@@ -287,13 +289,13 @@ async function loadData() {
   }
 }
 
-// 初始載入
+// 初始載入一次
 loadData();
 
 // ⏱️ 每 30 秒自動更新資料與使用者位置
 setInterval(() => {
   loadData();
-  locateUser(); // 可保留：更新藍點位置，不會強制置中
+  locateUser(); // 只更新藍點位置，不會強制置中
 }, 30 * 1000);
 
 search.addEventListener("input", render);
