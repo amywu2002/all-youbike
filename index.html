@@ -76,59 +76,26 @@ body {
   width: 100%;
 }
 
-/* =====【只改 marker：圓形 + 顏色】===== */
+/* ===== marker 顏色（只改外觀） ===== */
+.marker.green  { --c:#2ecc71; }
+.marker.yellow { --c:#f1c40f; }
+.marker.red    { --c:#e74c3c; }
 
 .leaflet-div-icon {
   background: transparent !important;
   border: none !important;
 }
 
-/* marker 容器 */
-.marker {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  transform: translateY(-10px);
+.marker svg {
+  width: 56px;
+  height: 56px;
 }
 
-/* 單一圓 */
-.marker .circle {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  border: 3px solid #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 16px;
-  font-weight: 700;
-  box-shadow: 0 2px 6px rgba(0,0,0,.35);
-  margin: -6px 0;
-}
-
-/* 顏色（依你截圖） */
-.marker.green .circle {
-  background: #2ecc71;
-  color: #000;
-}
-
-.marker.yellow .circle {
-  background: #f5a623;
-  color: #000;
-}
-
-.marker.red .circle {
-  background: #e53935;
-  color: #fff;
-}
-
-/* leaflet 控制位置 */
 .leaflet-top.leaflet-left {
   right: 12px;
   left: auto;
 }
 
-/* 使用者定位 */
 .user-dot {
   width: 18px;
   height: 18px;
@@ -179,19 +146,10 @@ body {
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
-/* ===== API（原樣） ===== */
-const TAIPEI_API =
-  "https://tcgbusfs.blob.core.windows.net/dotapp/youbike/v2/youbike_immediate.json";
 const TAOYUAN_API = "stations.json";
-const NEWTAI_API =
-  "https://cool-block-affbntpc-youbike-proxy.amywu2.workers.dev/ntpc";
 
-/* ===== 地圖（原樣） ===== */
 const map = L.map("map").setView([25.03, 121.55], 11);
 map.zoomControl.setPosition("topright");
-
-map.createPane("userLocation");
-map.getPane("userLocation").style.zIndex = 650;
 
 L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
   attribution: "© OpenStreetMap"
@@ -199,27 +157,21 @@ L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
 
 let markers = [];
 let dataTY = [];
-let userMarker = null;
+let timer = null;
 
 /* ===== 使用者定位（原樣） ===== */
 if (navigator.geolocation) {
   navigator.geolocation.getCurrentPosition(pos => {
-    userMarker = L.marker(
-      [pos.coords.latitude, pos.coords.longitude],
-      {
-        pane: "userLocation",
-        icon: L.divIcon({
-          className: "",
-          iconSize: [24, 24],
-          html: `<div class="user-dot"></div>`
-        })
-      }
-    ).addTo(map);
-    map.setView([pos.coords.latitude, pos.coords.longitude], 14);
+    L.marker([pos.coords.latitude, pos.coords.longitude], {
+      icon: L.divIcon({
+        className: "",
+        iconSize: [24, 24],
+        html: `<div class="user-dot"></div>`
+      })
+    }).addTo(map);
   });
 }
 
-/* ===== 工具（原樣） ===== */
 function clearMarkers() {
   markers.forEach(m => map.removeLayer(m));
   markers = [];
@@ -231,28 +183,30 @@ function getStatus(b, r) {
   return "green";
 }
 
-/* =====【只改這個：marker HTML】===== */
+/* ===== 只改這裡：圓形 marker ===== */
 function makeMarkerHTML(b, r, status) {
   return `
     <div class="marker ${status}">
-      <div class="circle">${b}</div>
-      <div class="circle">${r}</div>
-    </div>
-  `;
+      <svg viewBox="0 0 64 64">
+        <circle cx="32" cy="32" r="28"
+          fill="var(--c)" stroke="#fff" stroke-width="3"/>
+        <line x1="18" y1="32" x2="46" y2="32"
+          stroke="#fff" stroke-width="3"/>
+        <text x="32" y="26" text-anchor="middle"
+          font-size="16" font-weight="700" fill="#fff">${b}</text>
+        <text x="32" y="48" text-anchor="middle"
+          font-size="16" font-weight="600" fill="#fff">${r}</text>
+      </svg>
+    </div>`;
 }
 
-/* ===== Render（原樣） ===== */
 function render() {
   clearMarkers();
 
   const kw = search.value.trim();
-  const cityF = city.value;
   const statusF = statusFilter.value;
 
-  let list = [];
-  if (cityF === "all" || cityF === "ty") list = list.concat(dataTY);
-
-  list
+  dataTY
     .filter(s => {
       const st = getStatus(s.borrow, s.ret);
       if (statusF !== "all" && st !== statusF) return false;
@@ -262,18 +216,11 @@ function render() {
     .forEach(s => {
       const marker = L.marker([s.lat, s.lng], {
         icon: L.divIcon({
-          iconSize: [50, 70],
-          iconAnchor: [25, 70],
+          iconSize: [56, 56],
+          iconAnchor: [28, 28],
           html: makeMarkerHTML(s.borrow, s.ret, getStatus(s.borrow, s.ret))
         })
-      })
-      .addTo(map)
-      .bindPopup(`
-        <b>${s.name}</b><br>
-        地址：${s.addr}<br>
-        可借：${s.borrow}<br>
-        可還：${s.ret}
-      `);
+      }).addTo(map);
 
       markers.push(marker);
     });
@@ -281,7 +228,6 @@ function render() {
   count.textContent = `筆數：${markers.length}`;
 }
 
-/* ===== 載入資料（原樣） ===== */
 function loadData() {
   fetch(TAOYUAN_API)
     .then(r => r.json())
@@ -294,16 +240,13 @@ function loadData() {
         borrow: +s.sbi,
         ret: +s.bemp
       }));
-
-      lastUpdate.textContent =
-        "最後更新：" + new Date().toLocaleString();
-
+      lastUpdate.textContent = "最後更新：" + new Date().toLocaleString();
       render();
     });
 }
 
 loadData();
-let timer = setInterval(loadData, 30000);
+timer = setInterval(loadData, 30000);
 
 interval.addEventListener("change", e => {
   clearInterval(timer);
@@ -312,7 +255,6 @@ interval.addEventListener("change", e => {
 });
 
 refresh.addEventListener("click", loadData);
-
 search.addEventListener("input", render);
 statusFilter.addEventListener("change", render);
 city.addEventListener("change", render);
