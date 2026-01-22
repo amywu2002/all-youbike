@@ -118,8 +118,6 @@ body {
     <select id="city">
       <option value="all">縣市</option>
       <option value="ty">桃園</option>
-      <option value="nt">新北</option>
-      <option value="tp">臺北</option>
     </select>
 
     <select id="statusFilter">
@@ -231,8 +229,6 @@ function render() {
 
   let list = [];
   if (cityF === "all" || cityF === "ty") list = list.concat(dataTY);
-  if (cityF === "all" || cityF === "nt") list = list.concat(dataNT);
-  if (cityF === "all" || cityF === "tp") list = list.concat(dataTP);
 
   list
     .filter(s => {
@@ -267,9 +263,7 @@ function render() {
 function loadData() {
   Promise.all([
     fetch(TAOYUAN_API).then(r => r.json()),
-    fetch(NEWTAI_API).then(r => r.json()),
-    fetch(TAIPEI_API).then(r => r.json())
-  ]).then(([ty, nt, tp]) => {
+  ]).then(([ty]) => {
     dataTY = Object.values(ty.retVal).map(s => ({
       name: s.sna,
       addr: s.ar || "",
@@ -278,25 +272,7 @@ function loadData() {
       borrow: +s.sbi,
       ret: +s.bemp
     }));
-
-    dataNT = nt.map(s => ({
-      name: s.sna,
-      addr: s.ar || "",
-      lat: +s.lat,
-      lng: +s.lng,
-      borrow: +s.sbi_quantity,
-      ret: +s.bemp
-    }));
-
-    dataTP = tp.map(s => ({
-      name: s.sna,
-      addr: s.ar || "",
-      lat: +s.latitude,
-      lng: +s.longitude,
-      borrow: +s.available_rent_bikes,
-      ret: +s.available_return_bikes
-    }));
-
+    
     lastUpdate.textContent =
       "最後更新：" + new Date().toLocaleString();
 
@@ -322,6 +298,7 @@ city.addEventListener("change", render);
 
 </body>
 </html>
+
 
 
 
