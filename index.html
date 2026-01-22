@@ -11,48 +11,72 @@
 body {
   margin: 0;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: #050b1e;
 }
 
+/* ===== 上方深色官方風 ===== */
+#topbar {
+  background: radial-gradient(1200px 300px at 20% -50%, #1b2a4a, #050b1e);
+  color: #fff;
+  padding: 20px 24px 16px;
+}
+
+#topbar h1 {
+  margin: 0 0 14px;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.toolbar {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr 1fr 1.2fr;
+  gap: 12px;
+}
+
+.toolbar input,
+.toolbar select {
+  background: rgba(255,255,255,.08);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,.15);
+  padding: 12px 14px;
+  border-radius: 14px;
+  font-size: 15px;
+  outline: none;
+}
+
+.toolbar input::placeholder {
+  color: rgba(255,255,255,.55);
+}
+
+.toolbar select option {
+  color: #000;
+}
+
+.meta {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 14px;
+  font-size: 14px;
+  color: rgba(255,255,255,.75);
+}
+
+.meta button {
+  background: rgba(255,255,255,.12);
+  border: 1px solid rgba(255,255,255,.2);
+  color: #fff;
+  padding: 6px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+/* ===== 地圖 ===== */
 #map {
-  height: 100vh;
+  height: calc(100vh - 190px);
   width: 100%;
 }
 
-/* 左上 */
-#count {
-  position: absolute;
-  top: 12px;
-  left: 12px;
-  z-index: 1000;
-  background: #fff;
-  padding: 6px 10px;
-  border-radius: 8px;
-  box-shadow: 0 2px 6px rgba(0,0,0,.15);
-  font-size: 14px;
-}
-
-/* 上方控制 */
-#controls {
-  position: absolute;
-  top: 12px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 1000;
-  display: flex;
-  gap: 8px;
-}
-
-#controls input,
-#controls select {
-  padding: 8px 10px;
-  font-size: 14px;
-  border-radius: 8px;
-  border: 1px solid #ccc;
-  background: #fff;
-  box-shadow: 0 2px 6px rgba(0,0,0,.15);
-}
-
-/* Marker 顏色 */
+/* === 以下 marker / leaflet 原樣保留 === */
 .marker.green  { --c:#7AC943; }
 .marker.yellow { --c:#F5A623; }
 .marker.red    { --c:#A80000; }
@@ -67,13 +91,11 @@ body {
   height: 68px;
 }
 
-/* +- 右上 */
 .leaflet-top.leaflet-left {
   right: 12px;
   left: auto;
 }
 
-/* 使用者定位 */
 .user-dot {
   width: 18px;
   height: 18px;
@@ -87,39 +109,53 @@ body {
 
 <body>
 
-<div id="count">站點：--</div>
+<header id="topbar">
+  <h1>新北市 YouBike 2.0｜即時場站地圖</h1>
 
-<div id="controls">
-  <select id="city">
-    <option value="all">城市</option>
-    <option value="ty">桃園</option>
-    <option value="nt">新北</option>
-    <option value="tp">臺北</option>
-  </select>
+  <div class="toolbar">
+    <input id="search" placeholder="搜尋場站名稱 / 地址…" />
 
-  <input id="search" placeholder="搜尋站點名稱或地址…" />
+    <select id="city">
+      <option value="all">全部行政區</option>
+      <option value="ty">桃園</option>
+      <option value="nt">新北</option>
+      <option value="tp">臺北</option>
+    </select>
 
-  <select id="statusFilter">
-    <option value="all">全部</option>
-    <option value="green">正常</option>
-    <option value="yellow">無車</option>
-    <option value="red">無位</option>
-  </select>
-</div>
+    <select id="statusFilter">
+      <option value="all">全部狀態</option>
+      <option value="green">正常</option>
+      <option value="yellow">無車</option>
+      <option value="red">無位</option>
+    </select>
+
+    <select id="interval">
+      <option value="30">每 30 秒自動更新</option>
+      <option value="60">每 60 秒自動更新</option>
+      <option value="0">停止自動更新</option>
+    </select>
+  </div>
+
+  <div class="meta">
+    <span id="lastUpdate">最後更新：--</span>
+    <span id="count">筆數：--</span>
+    <button id="refresh">↻ 立即更新</button>
+  </div>
+</header>
 
 <div id="map"></div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
-/* ===== API ===== */
+/* ===== API（原樣） ===== */
 const TAIPEI_API =
   "https://tcgbusfs.blob.core.windows.net/dotapp/youbike/v2/youbike_immediate.json";
 const TAOYUAN_API = "stations.json";
 const NEWTAI_API =
   "https://cool-block-affbntpc-youbike-proxy.amywu2.workers.dev/ntpc";
 
-/* ===== 地圖 ===== */
+/* ===== 地圖（原樣） ===== */
 const map = L.map("map").setView([25.03, 121.55], 11);
 map.zoomControl.setPosition("topright");
 
@@ -130,14 +166,13 @@ L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
   attribution: "© OpenStreetMap"
 }).addTo(map);
 
-/* ===== 狀態 ===== */
 let markers = [];
 let dataTP = [];
 let dataTY = [];
 let dataNT = [];
 let userMarker = null;
 
-/* ===== 使用者定位 ===== */
+/* ===== 使用者定位（原樣） ===== */
 if (navigator.geolocation) {
   navigator.geolocation.getCurrentPosition(pos => {
     userMarker = L.marker(
@@ -155,7 +190,7 @@ if (navigator.geolocation) {
   });
 }
 
-/* ===== 工具 ===== */
+/* ===== 工具（原樣） ===== */
 function clearMarkers() {
   markers.forEach(m => map.removeLayer(m));
   markers = [];
@@ -176,9 +211,7 @@ function makeMarkerHTML(b, r, status) {
                  C32 68 54 44 54 26
                  C54 12 44 2 32 2Z"
           fill="var(--c)" stroke="#fff" stroke-width="3"/>
-        <line x1="20" y1="30" x2="44" y2="30"
-          stroke="#fff" stroke-width="2"/>
-        <text x="32" y="24" text-anchor="middle"
+        <text x="32" y="28" text-anchor="middle"
           font-size="16" font-weight="700" fill="#fff">${b}</text>
         <text x="32" y="48" text-anchor="middle"
           font-size="16" font-weight="600" fill="#fff">${r}</text>
@@ -186,7 +219,7 @@ function makeMarkerHTML(b, r, status) {
     </div>`;
 }
 
-/* ===== Render ===== */
+/* ===== Render（原樣） ===== */
 function render() {
   clearMarkers();
 
@@ -225,10 +258,10 @@ function render() {
       markers.push(marker);
     });
 
-  count.textContent = `站點：${markers.length}站`;
+  count.textContent = `筆數：${markers.length}`;
 }
 
-/* ===== 載入資料（關鍵） ===== */
+/* ===== 載入資料（邏輯原樣，只補 UI） ===== */
 function loadData() {
   Promise.all([
     fetch(TAOYUAN_API).then(r => r.json()),
@@ -262,16 +295,24 @@ function loadData() {
       ret: +s.available_return_bikes
     }));
 
+    lastUpdate.textContent =
+      "最後更新：" + new Date().toLocaleString();
+
     render();
   });
 }
 
-/* ⭐ 一進網頁就載入 ⭐ */
 loadData();
-/* ⭐ 每 30 秒更新 ⭐ */
-setInterval(loadData, 30000);
+let timer = setInterval(loadData, 30000);
 
-/* ===== 事件 ===== */
+interval.addEventListener("change", e => {
+  clearInterval(timer);
+  const sec = Number(e.target.value);
+  if (sec > 0) timer = setInterval(loadData, sec * 1000);
+});
+
+refresh.addEventListener("click", loadData);
+
 search.addEventListener("input", render);
 statusFilter.addEventListener("change", render);
 city.addEventListener("change", render);
@@ -279,4 +320,3 @@ city.addEventListener("change", render);
 
 </body>
 </html>
-
