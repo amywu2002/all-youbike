@@ -230,7 +230,14 @@ function render() {
           iconAnchor: [28, 28],
           html: makeMarkerHTML(s.borrow, s.ret, getStatus(s.borrow, s.ret))
         })
-      }).addTo(map);
+      })
+      .addTo(map)
+      .bindPopup(`
+        <b>${s.name}</b><br>
+        地址：${s.addr}<br>
+        可借：${s.borrow}<br>
+        可還：${s.ret}
+      `);
 
       markers.push(marker);
     });
@@ -272,8 +279,3 @@ city.addEventListener("change", render);
 
 </body>
 </html>
-
-
-
-
-
