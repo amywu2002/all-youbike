@@ -273,9 +273,10 @@ interval.addEventListener("change", e => {
 
 refresh.addEventListener("click", loadData);
 search.addEventListener("input", render);
-statusFilter.addEventListener("change", render);
+statusFilter.addEventListener("change", loadData);
 city.addEventListener("change", render);
 </script>
 
 </body>
 </html>
+
